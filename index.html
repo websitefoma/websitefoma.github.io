@@ -425,7 +425,7 @@
           <div class="small text-secondary mt-1" id="modalStatusText">Ждём сообщение победителя в чате...</div>
         </div>
         <div id="modalChatFeed" style="max-height:260px; overflow-y:auto;">
-          <div class="text-secondary small" id="modalFeedEmpty">Сообщения из чата появятся здесь...</div>
+          <div class="text-secondary small" id="modalFeedEmpty">Здесь появятся сообщения победителя из чата...</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -971,14 +971,16 @@ async function connectToChat() {
     const msgDisplayName = tags['display-name'] || tags.username;
     log(`Сообщение от ${msgDisplayName}: "${message}"`, 'info');
 
-    // Пока открыто окно ожидания ответа победителя — ведём в нём полную ленту чата
-    // (все сообщения, а не только первое) и проверяем, не победитель ли написал.
+    // Пока открыто окно ожидания ответа победителя — показываем в нём ленту
+    // ТОЛЬКО из его собственных сообщений (все, если их несколько), остальной чат не выводим.
     if (winnerWatch) {
       const isWinnerMsg = msgUsername === winnerWatch.username;
-      appendToModalFeed(msgDisplayName, message, isWinnerMsg);
-      if (isWinnerMsg && !winnerWatch.answered) {
-        const elapsed = (Date.now() - winnerWatch.startTimestamp) / 1000;
-        stopWinnerWatch(elapsed);
+      if (isWinnerMsg) {
+        appendToModalFeed(msgDisplayName, message, true);
+        if (!winnerWatch.answered) {
+          const elapsed = (Date.now() - winnerWatch.startTimestamp) / 1000;
+          stopWinnerWatch(elapsed);
+        }
       }
     }
 
