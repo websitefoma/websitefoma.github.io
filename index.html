@@ -334,6 +334,15 @@ function log(message, level = 'info') {
   debugLog.scrollTop = debugLog.scrollHeight;
 }
 
+// Перехватываем ЛЮБЫЕ необработанные ошибки JS и выводим их в панель отладки.
+// Это нужно, чтобы пользователь видел причину сбоя, даже не открывая консоль браузера (F12).
+window.addEventListener('error', (event) => {
+  log('Необработанная ошибка: ' + (event.message || event.error), 'error');
+});
+window.addEventListener('unhandledrejection', (event) => {
+  log('Необработанный отказ промиса: ' + (event.reason && event.reason.message ? event.reason.message : event.reason), 'error');
+});
+
 // =========================================================================
 // РАБОТА С ИСТОРИЕЙ ПОБЕД (localStorage)
 // =========================================================================
@@ -524,12 +533,35 @@ async function connectToChat() {
   // подключиться к чату Twitch только на чтение, без авторизации.
   const anonNick = 'justinfan' + Math.floor(10000 + Math.random() * 90000);
 
-  tmiClient = new tmi.Client({
-    options: { debug: false },
-    connection: { reconnect: true, secure: true },
-    identity: { username: anonNick },
-    channels: [channel]
-  });
+  // Проверяем, что библиотека tmi.js вообще загрузилась с CDN.
+  // Если CDN заблокирован блокировщиком рекламы / фаерволом / нет сети — здесь будет явная ошибка в логе.
+  if (typeof tmi === 'undefined') {
+    setStatus('error', 'Библиотека tmi.js не загрузилась');
+    log('Библиотека tmi.js недоступна. Проверьте интернет-соединение и не блокирует ли расширение/антивирус скрипт с cdn.jsdelivr.net.', 'error');
+    return;
+  }
+
+  try {
+    tmiClient = new tmi.Client({
+      options: { debug: false },
+      connection: { reconnect: true, secure: true },
+      identity: { username: anonNick },
+      channels: [channel]
+    });
+  } catch (err) {
+    setStatus('error', 'Ошибка создания клиента');
+    log('Не удалось создать клиент tmi.js: ' + err, 'error');
+    return;
+  }
+
+  // Таймаут: если через 10 секунд ни "connected", ни "disconnected" не сработали —
+  // значит соединение "подвисло" (обычно из-за блокировки WebSocket фаерволом/прокси/расширением).
+  const connectTimeout = setTimeout(() => {
+    if (statusText.textContent === 'Подключение...') {
+      setStatus('error', 'Нет ответа от Twitch');
+      log('Подключение не завершилось за 10 секунд. Обычно это блокировка WebSocket (wss://) фаерволом, прокси, VPN или расширением-блокировщиком. Попробуйте отключить блокировщики рекламы или открыть страницу в режиме инкогнито.', 'error');
+    }
+  }, 10000);
 
   // Событие: сообщение получено
   tmiClient.on('message', (chan, tags, message, self) => {
@@ -554,6 +586,7 @@ async function connectToChat() {
 
   // Событие: успешное подключение
   tmiClient.on('connected', (address, port) => {
+    clearTimeout(connectTimeout);
     setStatus('online', `Подключено к каналу #${channel}`);
     log(`Успешно подключено к чату #${channel} (${address}:${port})`, 'success');
     connectBtn.disabled = true;
@@ -564,6 +597,7 @@ async function connectToChat() {
 
   // Событие: отключение
   tmiClient.on('disconnected', (reason) => {
+    clearTimeout(connectTimeout);
     setStatus('offline', 'Отключено');
     log(`Соединение закрыто: ${reason || 'без причины'}`, 'warn');
     connectBtn.disabled = false;
@@ -577,6 +611,7 @@ async function connectToChat() {
     log(`Подключаюсь к каналу #${channel} как ${anonNick}...`, 'info');
     await tmiClient.connect();
   } catch (err) {
+    clearTimeout(connectTimeout);
     setStatus('error', 'Ошибка подключения');
     log('Ошибка подключения: ' + err, 'error');
   }
