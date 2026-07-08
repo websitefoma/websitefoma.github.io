@@ -309,6 +309,107 @@
     pointer-events:none;
   }
 
+  /* ============ Режим "Выбывание" (альтернатива колесу рулетки) ============ */
+  .elimination-wrap{
+    margin-bottom: 1rem;
+  }
+  .elimination-grid{
+    position: relative;
+    display:flex;
+    flex-wrap:wrap;
+    gap:.4rem;
+    justify-content:center;
+    align-content:flex-start;
+    min-height: 220px;
+    max-height: 280px;
+    overflow-y:auto;
+    padding: .75rem;
+    border-radius: 14px;
+    border: 1px solid var(--border-soft);
+    background: var(--panel-bg-2);
+  }
+  .elimination-chip{
+    background: var(--panel-bg);
+    border:1px solid var(--border-soft);
+    border-radius:8px;
+    padding:.35rem .6rem;
+    font-size:.85rem;
+    height: fit-content;
+    transition: opacity .35s ease, transform .35s ease, border-color .35s ease, background .35s ease;
+  }
+  .elimination-chip.eliminated{
+    opacity:.18;
+    transform: scale(.82);
+    text-decoration: line-through;
+    border-color: #e74c3c;
+    background: rgba(231,76,60,.12);
+  }
+  .elimination-chip.survivor{
+    border-color: var(--twitch-purple);
+    background: linear-gradient(90deg, var(--twitch-purple-dark), var(--twitch-purple));
+    color:#fff;
+    font-weight:700;
+    box-shadow: 0 0 20px rgba(145,70,255,.6);
+    transform: scale(1.15);
+  }
+  .elimination-empty-hint{
+    width:100%;
+    text-align:center;
+    color:#8a7fa8;
+    font-size:.85rem;
+    padding: 2rem 1rem;
+  }
+
+  /* ============ Бегущая строка выводов (vivod.txt) ============ */
+  .drops-ticker-wrap{
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    width: 380px;
+    max-width: calc(100vw - 32px);
+    height: 260px;
+    overflow: hidden;
+    background: rgba(23,20,31,0.72);
+    backdrop-filter: blur(3px);
+    border: 1px solid var(--border-soft);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    z-index: 900;
+    pointer-events: none; /* декоративный элемент, не мешает кликам под собой */
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  }
+  .drops-ticker-label{
+    position:absolute;
+    top:0; left:0; right:0;
+    text-align:center;
+    font-size:.72rem;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    color: var(--twitch-glow);
+    padding:.3rem 0;
+    background: linear-gradient(180deg, rgba(23,20,31,.95), rgba(23,20,31,0));
+    z-index:2;
+  }
+  .drops-ticker-track{
+    display:flex;
+    flex-direction: column;
+    padding-top: 2rem;
+    animation: dropsTickerScroll linear infinite;
+    animation-duration: 60s;
+  }
+  .drops-ticker-line{
+    padding: .3rem .8rem;
+    font-size: .74rem;
+    line-height:1.35;
+    color: #c9c2dc;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  @keyframes dropsTickerScroll{
+    from{ transform: translateY(0); }
+    to{ transform: translateY(-50%); }
+  }
+
   /* ============ Модальное окно с чатом победителя и секундомером ============ */
   #winnerChatModal .modal-content{
     background: var(--panel-bg);
@@ -328,6 +429,15 @@
   .stopwatch-display.stopped{
     color: #2ecc71;
     text-shadow: 0 0 20px rgba(46,204,113,.5);
+  }
+  .stopwatch-display.timeout{
+    color: #e74c3c;
+    text-shadow: 0 0 20px rgba(231,76,60,.7);
+    animation: timeoutPulse 1s infinite;
+  }
+  @keyframes timeoutPulse{
+    0%, 100% { opacity: 1; }
+    50% { opacity: .6; }
   }
   .repeat-winner-warning{
     background: rgba(231,76,60,.15);
@@ -373,6 +483,17 @@
 </head>
 
 <body>
+
+<!-- ============================================================ -->
+<!-- Бегущая строка выводов (из vivod.txt) — декоративный тикер,   -->
+<!-- прокручивается снизу вверх в левом нижнем углу экрана.        -->
+<!-- ============================================================ -->
+<div class="drops-ticker-wrap" id="dropsTickerWrap">
+  <div class="drops-ticker-label"><i class="bi bi-box-seam"></i> Выводы</div>
+  <div class="drops-ticker-track" id="dropsTickerTrack">
+    <div class="drops-ticker-line text-secondary">Загрузка vivod.txt...</div>
+  </div>
+</div>
 
 <!-- ============ Шапка приложения ============ -->
 <header class="app-header py-3 mb-4">
@@ -443,12 +564,28 @@
         </div>
         <div class="p-3">
 
+          <!-- Переключатель режима розыгрыша -->
+          <div class="btn-group w-100 mb-3" role="group" aria-label="Режим розыгрыша">
+            <input type="radio" class="btn-check" name="drawMode" id="modeRoulette" autocomplete="off" checked>
+            <label class="btn btn-outline-light btn-sm" for="modeRoulette"><i class="bi bi-disc"></i> Рулетка</label>
+
+            <input type="radio" class="btn-check" name="drawMode" id="modeElimination" autocomplete="off">
+            <label class="btn btn-outline-light btn-sm" for="modeElimination"><i class="bi bi-skull"></i> Выбывание</label>
+          </div>
+
           <!-- Колесо рулетки -->
-          <div class="wheel-wrap">
+          <div class="wheel-wrap" id="wheelWrap">
             <div class="wheel-pointer"></div>
             <canvas id="wheelCanvas" width="320" height="320"></canvas>
             <div class="wheel-hub"></div>
             <div class="wheel-empty-hint" id="wheelEmptyHint">Ждём участников в чате...</div>
+          </div>
+
+          <!-- Сетка "Выбывание" (альтернатива колесу) -->
+          <div class="elimination-wrap" id="eliminationWrap" style="display:none;">
+            <div class="elimination-grid" id="eliminationGrid">
+              <div class="elimination-empty-hint" id="eliminationEmptyHint">Ждём участников в чате...</div>
+            </div>
           </div>
 
           <div class="winner-reveal mb-3" id="winnerReveal"></div>
@@ -607,6 +744,13 @@ const debugLog = document.getElementById('debugLog');
 const wheelCanvas = document.getElementById('wheelCanvas');
 const wheelCtx = wheelCanvas.getContext('2d');
 const wheelEmptyHint = document.getElementById('wheelEmptyHint');
+const wheelWrap = document.getElementById('wheelWrap');
+const eliminationWrap = document.getElementById('eliminationWrap');
+const eliminationGrid = document.getElementById('eliminationGrid');
+const eliminationEmptyHint = document.getElementById('eliminationEmptyHint');
+const modeRouletteRadio = document.getElementById('modeRoulette');
+const modeEliminationRadio = document.getElementById('modeElimination');
+const dropsTickerTrack = document.getElementById('dropsTickerTrack');
 const winnerChatModalEl = document.getElementById('winnerChatModal');
 const winnerModal = new bootstrap.Modal(winnerChatModalEl);
 const modalWinnerName = document.getElementById('modalWinnerName');
@@ -925,8 +1069,103 @@ function renderParticipants() {
 // РУЛЕТКА
 // =========================================================================
 
+let currentMode = 'roulette'; // 'roulette' | 'elimination' — выбранный режим розыгрыша
+
 function getEligibleParticipants() {
   return [...participants.entries()].filter(([username]) => !isOnCooldown(username));
+}
+
+/**
+ * Обновляет превью текущего режима (колесо рулетки или сетку "Выбывание")
+ * в соответствии с выбранным режимом — вызывается вместо прямого drawWheel()
+ * везде, где раньше просто перерисовывался список участников.
+ */
+function refreshDrawPreview() {
+  if (currentMode === 'elimination') {
+    renderEliminationPreview();
+  } else {
+    drawWheel();
+  }
+}
+
+/**
+ * Переключает видимость блоков колеса рулетки и сетки "Выбывание"
+ * в зависимости от выбранного режима.
+ */
+function updateModeUI() {
+  const isElimination = currentMode === 'elimination';
+  wheelWrap.style.display = isElimination ? 'none' : 'block';
+  eliminationWrap.style.display = isElimination ? 'block' : 'none';
+  drawBtn.innerHTML = isElimination
+    ? '<i class="bi bi-skull"></i> Начать выбывание!'
+    : '<i class="bi bi-dice-5"></i> Крутить рулетку!';
+  refreshDrawPreview();
+}
+
+/**
+ * Отрисовывает предварительный список участников для режима "Выбывание"
+ * (простые карточки без анимации — сама анимация выбывания в runElimination()).
+ */
+function renderEliminationPreview() {
+  const eligible = getEligibleParticipants();
+  eliminationGrid.querySelectorAll('.elimination-chip').forEach(el => el.remove());
+
+  if (eligible.length === 0) {
+    eliminationEmptyHint.style.display = 'flex';
+    return;
+  }
+  eliminationEmptyHint.style.display = 'none';
+
+  eligible.forEach(([username, data]) => {
+    const chip = document.createElement('div');
+    chip.className = 'elimination-chip';
+    chip.textContent = data.displayName;
+    eliminationGrid.appendChild(chip);
+  });
+}
+
+/**
+ * Анимация "Выбывание": все участники, кроме заранее определённого победителя
+ * (winnerIndex уже выбран честным случайным образом в drawWinner — здесь только
+ * визуализация), поочерёдно "выбывают" в случайном порядке, пока не останется один.
+ */
+function runElimination(eligible, winnerIndex, onFinish) {
+  eliminationGrid.querySelectorAll('.elimination-chip').forEach(el => el.remove());
+  eliminationEmptyHint.style.display = 'none';
+
+  const chips = eligible.map(([username, data]) => {
+    const chip = document.createElement('div');
+    chip.className = 'elimination-chip';
+    chip.textContent = data.displayName;
+    eliminationGrid.appendChild(chip);
+    return chip;
+  });
+
+  // Случайный порядок выбывания для всех, кроме победителя (Fisher-Yates)
+  const eliminationOrder = eligible.map((_, idx) => idx).filter(idx => idx !== winnerIndex);
+  for (let i = eliminationOrder.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [eliminationOrder[i], eliminationOrder[j]] = [eliminationOrder[j], eliminationOrder[i]];
+  }
+
+  const totalSteps = eliminationOrder.length;
+  let step = 0;
+
+  function eliminateNext() {
+    if (step >= totalSteps) {
+      chips[winnerIndex].classList.add('survivor');
+      setTimeout(onFinish, 1000);
+      return;
+    }
+    const idx = eliminationOrder[step];
+    chips[idx].classList.add('eliminated');
+    step++;
+    // Постепенно ускоряемся к концу для динамики
+    const delay = Math.max(110, 650 - step * 12);
+    setTimeout(eliminateNext, delay);
+  }
+
+  setTimeout(eliminateNext, 500);
 }
 
 function drawWheel() {
@@ -1001,6 +1240,8 @@ function spinWheelTo(eligibleCount, winnerIndex, onFinish) {
 // ОКНО ПОБЕДИТЕЛЯ
 // =========================================================================
 
+const RESPONSE_TIMEOUT_SECONDS = 16; // после этого времени секундомер замирает и загорается красным
+
 function openWinnerWatch(username, displayName, historyTimestamp) {
   if (winnerWatch && winnerWatch.intervalId) {
     clearInterval(winnerWatch.intervalId);
@@ -1012,13 +1253,14 @@ function openWinnerWatch(username, displayName, historyTimestamp) {
     startTimestamp: Date.now(),
     intervalId: null,
     answered: false,
+    timedOut: false,
     historyTimestamp
   };
 
   modalWinnerName.textContent = displayName;
   modalStatusText.textContent = 'Ждём сообщение победителя в чате...';
   modalStatusText.className = 'small text-secondary mt-1';
-  modalStopwatch.classList.remove('stopped');
+  modalStopwatch.classList.remove('stopped', 'timeout');
   modalChatFeed.querySelectorAll('.feed-line').forEach(el => el.remove());
   modalFeedEmpty.style.display = 'block';
   updateStopwatchDisplay(0);
@@ -1046,6 +1288,18 @@ function openWinnerWatch(username, displayName, historyTimestamp) {
 
   winnerWatch.intervalId = setInterval(() => {
     const elapsed = (Date.now() - winnerWatch.startTimestamp) / 1000;
+
+    if (!winnerWatch.timedOut && elapsed >= RESPONSE_TIMEOUT_SECONDS) {
+      winnerWatch.timedOut = true;
+      updateStopwatchDisplay(RESPONSE_TIMEOUT_SECONDS);
+      modalStopwatch.classList.add('timeout');
+      modalStatusText.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Время вышло (${RESPONSE_TIMEOUT_SECONDS} сек) — победитель пока не ответил.`;
+      modalStatusText.className = 'small text-danger mt-1';
+      clearInterval(winnerWatch.intervalId);
+      log(`${displayName} не ответил(а) за ${RESPONSE_TIMEOUT_SECONDS} сек — таймер остановлен.`, 'warn');
+      return;
+    }
+
     updateStopwatchDisplay(elapsed);
   }, 100);
 
@@ -1072,8 +1326,10 @@ function stopWinnerWatch(elapsedSeconds) {
   clearInterval(winnerWatch.intervalId);
   winnerWatch.answered = true;
   updateStopwatchDisplay(elapsedSeconds);
+  modalStopwatch.classList.remove('timeout');
   modalStopwatch.classList.add('stopped');
   modalStatusText.innerHTML = `<i class="bi bi-check-circle-fill text-success"></i> Победитель ответил в чате за <strong>${elapsedSeconds.toFixed(1)} сек</strong>`;
+  modalStatusText.className = 'small mt-1';
 
   updateResponseTimeInBoth(winnerWatch.historyTimestamp, elapsedSeconds);
   log(`${winnerWatch.displayName} ответил(а) в чате через ${elapsedSeconds.toFixed(1)} сек после розыгрыша.`, 'success');
@@ -1087,7 +1343,7 @@ winnerChatModalEl.addEventListener('hidden.bs.modal', () => {
     } else if (closeWithoutCooldown) {
       removeHistoryEntry(winnerWatch.historyTimestamp);
       renderParticipants();
-      drawWheel();
+      refreshDrawPreview();
       log(`Окно закрыто крестиком: кулдаун для ${winnerWatch.displayName} не начислен.`, 'info');
     } else {
       log(`Окно ожидания ответа от ${winnerWatch.displayName} закрыто без ответа — начислен кулдаун.`, 'warn');
@@ -1113,7 +1369,7 @@ rerollBtn.addEventListener('click', () => {
   markDropRerolled(winnerWatch.historyTimestamp);
   renderDropsHistory();
   renderParticipants();
-  drawWheel();
+  refreshDrawPreview();
   log(`Реролл: кулдаун для ${winnerWatch.displayName} не начислен, крутим заново.`, 'info');
 
   rerollRequested = true;
@@ -1151,7 +1407,7 @@ async function connectToChat() {
   participants.clear();
   messageStats.clear();
   renderParticipants();
-  drawWheel();
+  refreshDrawPreview();
   winnerReveal.classList.remove('show');
 
   const anonNick = 'justinfan' + Math.floor(10000 + Math.random() * 90000);
@@ -1225,7 +1481,7 @@ async function connectToChat() {
         participants.set(username, { displayName });
         log(`Участник добавлен: ${displayName}`, 'success');
         renderParticipants();
-        if (!isSpinning) drawWheel();
+        if (!isSpinning) refreshDrawPreview();
       }
     }
   });
@@ -1304,11 +1560,11 @@ function drawWinner() {
   isSpinning = true;
   drawBtn.disabled = true;
   clearParticipantsBtn.disabled = true;
-  log(`Кручу рулетку среди ${eligible.length} участников...`, 'info');
+  log(`Розыгрыш среди ${eligible.length} участников (режим: ${currentMode === 'elimination' ? 'выбывание' : 'рулетка'})...`, 'info');
 
-  drawWheel();
+  refreshDrawPreview();
 
-  spinWheelTo(eligible.length, winnerIndex, () => {
+  const onDrawFinish = () => {
     const historyTimestamp = addWinnerToHistory(winnerUsername, winnerData.displayName, currentKeyword, currentChannel || 'неизвестно');
     log(`Победитель розыгрыша: ${winnerData.displayName}`, 'success');
 
@@ -1317,14 +1573,20 @@ function drawWinner() {
 
     renderParticipants();
     renderHistory();
-    drawWheel();
+    refreshDrawPreview();
 
     isSpinning = false;
     drawBtn.disabled = false;
     clearParticipantsBtn.disabled = false;
 
     openWinnerWatch(winnerUsername, winnerData.displayName, historyTimestamp);
-  });
+  };
+
+  if (currentMode === 'elimination') {
+    runElimination(eligible, winnerIndex, onDrawFinish);
+  } else {
+    spinWheelTo(eligible.length, winnerIndex, onDrawFinish);
+  }
 }
 
 // =========================================================================
@@ -1339,11 +1601,22 @@ noKeywordCheck.addEventListener('change', () => {
   keywordInput.disabled = noKeywordCheck.checked;
 });
 
+modeRouletteRadio.addEventListener('change', () => {
+  if (isSpinning) { modeEliminationRadio.checked = (currentMode === 'elimination'); return; }
+  currentMode = 'roulette';
+  updateModeUI();
+});
+modeEliminationRadio.addEventListener('change', () => {
+  if (isSpinning) { modeRouletteRadio.checked = (currentMode === 'roulette'); return; }
+  currentMode = 'elimination';
+  updateModeUI();
+});
+
 clearParticipantsBtn.addEventListener('click', () => {
   if (isSpinning) return;
   participants.clear();
   renderParticipants();
-  drawWheel();
+  refreshDrawPreview();
   winnerReveal.classList.remove('show');
   log('Список участников очищен вручную.', 'info');
 });
@@ -1359,7 +1632,7 @@ participantsList.addEventListener('click', (event) => {
 
   participants.delete(username);
   renderParticipants();
-  drawWheel();
+  refreshDrawPreview();
   log(`Участник удалён вручную: ${data.displayName}`, 'info');
 });
 
@@ -1390,8 +1663,55 @@ function startAutoRefresh() {
   autoRefreshTimer = setInterval(() => {
     renderHistory();
     renderParticipants();
-    if (!isSpinning) drawWheel();
+    if (!isSpinning) refreshDrawPreview();
   }, 5000);
+}
+
+// =========================================================================
+// БЕГУЩАЯ СТРОКА ВЫВОДОВ (vivod.txt)
+// Файл vivod.txt должен лежать рядом с index.html на GitHub Pages.
+// Каждая непустая строка (кроме разделителя из дефисов) выводится как
+// отдельная строка тикера, прокручивающегося снизу вверх по кругу.
+// =========================================================================
+
+let dropsTickerLines = [];
+
+async function loadDropsTicker() {
+  try {
+    const res = await fetch('vivod.txt', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+
+    dropsTickerLines = text
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !/^-{5,}$/.test(line));
+
+    renderDropsTicker();
+    log(`Бегущая строка выводов: загружено ${dropsTickerLines.length} строк из vivod.txt`, 'success');
+  } catch (err) {
+    log('Не удалось загрузить vivod.txt для бегущей строки (файл должен лежать рядом с index.html): ' + err, 'warn');
+    dropsTickerTrack.innerHTML = '<div class="drops-ticker-line text-secondary">Не удалось загрузить vivod.txt</div>';
+  }
+}
+
+function renderDropsTicker() {
+  if (dropsTickerLines.length === 0) {
+    dropsTickerTrack.innerHTML = '<div class="drops-ticker-line text-secondary">Файл vivod.txt пуст.</div>';
+    return;
+  }
+
+  const linesHtml = dropsTickerLines
+    .map(line => `<div class="drops-ticker-line">${escapeHtml(line)}</div>`)
+    .join('');
+
+  // Дублируем контент дважды подряд, чтобы прокрутка на 50% высоты была бесшовной (зацикленной).
+  dropsTickerTrack.innerHTML = linesHtml + linesHtml;
+
+  // Скорость подстраивается под количество строк, чтобы тикер не был
+  // слишком быстрым/медленным независимо от размера файла.
+  const durationSeconds = Math.max(20, dropsTickerLines.length * 2.4);
+  dropsTickerTrack.style.animationDuration = durationSeconds + 's';
 }
 
 // =========================================================================
@@ -1401,8 +1721,9 @@ function startAutoRefresh() {
 window.addEventListener('DOMContentLoaded', () => {
   renderHistory();
   renderParticipants();
-  drawWheel();
+  refreshDrawPreview();
   startAutoRefresh();
+  loadDropsTicker();
   log('Приложение готово к работе. Введите канал и ключевое слово, затем нажмите «Подключиться».', 'info');
 });
 
