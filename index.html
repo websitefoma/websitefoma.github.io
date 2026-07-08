@@ -132,6 +132,28 @@
     color: var(--twitch-glow);
   }
 
+  .drops-history-line{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:.6rem;
+    padding:.3rem .5rem;
+    border-bottom: 1px solid var(--border-soft);
+    font-size:.85rem;
+  }
+  .drops-history-line:last-child{
+    border-bottom: none;
+  }
+  .drops-history-line .drops-name{
+    color: var(--twitch-glow);
+    font-weight:600;
+  }
+  .drops-history-line .drops-time{
+    color:#8a7fa8;
+    font-size:.78rem;
+    white-space:nowrap;
+  }
+
   #debugLog{
     background:#0b0910;
     border:1px solid var(--border-soft);
@@ -267,6 +289,22 @@
   .stopwatch-display.stopped{
     color: #2ecc71;
     text-shadow: 0 0 20px rgba(46,204,113,.5);
+  }
+  .repeat-winner-warning{
+    background: rgba(231,76,60,.15);
+    border: 1px solid rgba(231,76,60,.5);
+    border-radius: 10px;
+    padding: .6rem .8rem;
+    font-size: .85rem;
+    color: #ffb3ab;
+  }
+  .repeat-winner-warning .bonus-code{
+    display:block;
+    margin-top: .3rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 1px;
   }
   #modalChatFeed{
     background:#0b0910;
@@ -408,6 +446,26 @@
   </div>
 
   <!-- ============================================================ -->
+  <!-- История выпадений — полный хронологический лог всех розыгрышей -->
+  <!-- (в отличие от карточек "История победителей", здесь нет лимита в 20 записей) -->
+  <!-- ============================================================ -->
+  <div class="row g-4 mt-1">
+    <div class="col-12">
+      <div class="panel">
+        <div class="panel-header px-3 py-2 d-flex justify-content-between align-items-center">
+          <span><i class="bi bi-clock-history"></i> История выпадений</span>
+          <span class="badge counter-badge" id="dropsHistoryCount">0</span>
+        </div>
+        <div class="p-3">
+          <div id="dropsHistoryList" style="max-height:220px; overflow-y:auto;">
+            <div class="text-secondary small" id="dropsHistoryEmpty">Пока никто не выпадал.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
   <!-- Панель отладки — во всю ширину, внизу -->
   <!-- ============================================================ -->
   <div class="row g-4 mt-1">
@@ -439,6 +497,7 @@
           <div class="stopwatch-display" id="modalStopwatch">0.0 сек</div>
           <div class="small text-secondary mt-1" id="modalStatusText">Ждём сообщение победителя в чате...</div>
           <div class="small text-secondary mt-2" id="modalMessageStats"></div>
+          <div id="modalRepeatWarning" style="display:none;" class="repeat-winner-warning mt-2"></div>
         </div>
         <div id="modalChatFeed" style="max-height:260px; overflow-y:auto;">
           <div class="text-secondary small" id="modalFeedEmpty">Здесь появятся сообщения победителя из чата...</div>
@@ -475,6 +534,7 @@ const LS_HISTORY_KEY = 'twitchRaffle_history'; // ключ для истории
 // ---------- Состояние приложения ----------
 let tmiClient = null;                 // текущий клиент tmi.js
 let currentChannel = '';              // канал, к которому подключены (в нижнем регистре, без #)
+let sessionStartTimestamp = 0;        // момент подключения — от него считаем "уже выпадал за этот стрим"
 let currentKeyword = '';              // ключевое слово для участия (в нижнем регистре)
 let currentNoKeywordMode = false;     // true = в розыгрыше участвует любой, кто написал что угодно
 let participants = new Map();         // username -> { displayName }
@@ -502,6 +562,9 @@ const winnerReveal = document.getElementById('winnerReveal');
 const historyList = document.getElementById('historyList');
 const historyEmpty = document.getElementById('historyEmpty');
 const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+const dropsHistoryList = document.getElementById('dropsHistoryList');
+const dropsHistoryEmpty = document.getElementById('dropsHistoryEmpty');
+const dropsHistoryCount = document.getElementById('dropsHistoryCount');
 const debugLog = document.getElementById('debugLog');
 const wheelCanvas = document.getElementById('wheelCanvas');
 const wheelCtx = wheelCanvas.getContext('2d');
@@ -512,6 +575,7 @@ const modalWinnerName = document.getElementById('modalWinnerName');
 const modalStopwatch = document.getElementById('modalStopwatch');
 const modalStatusText = document.getElementById('modalStatusText');
 const modalMessageStats = document.getElementById('modalMessageStats');
+const modalRepeatWarning = document.getElementById('modalRepeatWarning');
 const modalChatFeed = document.getElementById('modalChatFeed');
 const modalFeedEmpty = document.getElementById('modalFeedEmpty');
 const rerollBtn = document.getElementById('rerollBtn');
@@ -612,6 +676,21 @@ function getLastWinTimestamp(username) {
   return entry ? entry.timestamp : null;
 }
 
+/**
+ * Ищет предыдущее (не текущее) выпадение этого пользователя за ТЕКУЩИЙ стрим
+ * (с момента подключения). excludeTimestamp — timestamp только что созданной
+ * записи о победе, её саму в расчёт не берём.
+ */
+function findPreviousWinThisStream(username, excludeTimestamp) {
+  const history = getHistory();
+  return history.find(
+    h => h.username === username.toLowerCase()
+      && h.channel === currentChannel.toLowerCase()
+      && h.timestamp !== excludeTimestamp
+      && h.timestamp >= sessionStartTimestamp
+  ) || null;
+}
+
 function isOnCooldown(username) {
   const cooldownDays = parseFloat(cooldownInput.value) || 0;
   if (cooldownDays <= 0) return false;
@@ -638,6 +717,7 @@ function renderHistory() {
   if (history.length === 0) {
     historyEmpty.style.display = 'block';
     historyList.querySelectorAll('.winner-item').forEach(el => el.remove());
+    renderDropsHistory();
     return;
   }
 
@@ -665,6 +745,36 @@ function renderHistory() {
       ${responseHtml}
     `;
     historyList.appendChild(item);
+  });
+
+  renderDropsHistory();
+}
+
+/**
+ * Отрисовывает полный хронологический лог всех выпадений (без лимита в 20 записей,
+ * в отличие от карточек "История победителей") — простыми строками, самые новые сверху.
+ */
+function renderDropsHistory() {
+  const history = getHistory();
+  dropsHistoryCount.textContent = history.length;
+
+  if (history.length === 0) {
+    dropsHistoryEmpty.style.display = 'block';
+    dropsHistoryList.querySelectorAll('.drops-history-line').forEach(el => el.remove());
+    return;
+  }
+
+  dropsHistoryEmpty.style.display = 'none';
+  dropsHistoryList.querySelectorAll('.drops-history-line').forEach(el => el.remove());
+
+  history.forEach(entry => {
+    const line = document.createElement('div');
+    line.className = 'drops-history-line';
+    line.innerHTML = `
+      <span><span class="drops-name">${escapeHtml(entry.displayName)}</span> · ${escapeHtml(entry.channel)}</span>
+      <span class="drops-time">${formatDate(entry.timestamp)}</span>
+    `;
+    dropsHistoryList.appendChild(line);
   });
 }
 
@@ -855,6 +965,18 @@ function openWinnerWatch(username, displayName, historyTimestamp) {
     modalMessageStats.textContent = 'Нет данных о сообщениях за этот стрим.';
   }
 
+  // Проверяем, не выпадал ли этот человек уже за этот же стрим
+  const previousWin = findPreviousWinThisStream(username, historyTimestamp);
+  if (previousWin) {
+    modalRepeatWarning.style.display = 'block';
+    modalRepeatWarning.innerHTML =
+      `⚠️ Этот человек уже выпадал за этот стрим в ${formatDate(previousWin.timestamp)}!`
+      + `<span class="bonus-code">Бонус: Ɑ͞ ̶͞ ̶͞ ̶͞ لں͞</span>`;
+  } else {
+    modalRepeatWarning.style.display = 'none';
+    modalRepeatWarning.innerHTML = '';
+  }
+
   winnerWatch.intervalId = setInterval(() => {
     const elapsed = (Date.now() - winnerWatch.startTimestamp) / 1000;
     updateStopwatchDisplay(elapsed);
@@ -974,6 +1096,7 @@ async function connectToChat() {
   currentChannel = channel;
   currentNoKeywordMode = noKeywordMode;
   currentKeyword = noKeywordMode ? '' : keyword;
+  sessionStartTimestamp = Date.now(); // отметка начала этого стрима — от неё считаем "уже выпадал за стрим"
 
   // Единственный автоматический сброс списка участников — при новом подключении к чату.
   participants.clear();
