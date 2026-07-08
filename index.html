@@ -432,7 +432,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">🎉 Победитель: <span id="modalWinnerName" class="text-warning"></span></h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        <button type="button" class="btn-close btn-close-white" id="winnerModalXBtn" data-bs-dismiss="modal" aria-label="Закрыть"></button>
       </div>
       <div class="modal-body">
         <div class="text-center mb-3">
@@ -516,6 +516,7 @@ const modalChatFeed = document.getElementById('modalChatFeed');
 const modalFeedEmpty = document.getElementById('modalFeedEmpty');
 const rerollBtn = document.getElementById('rerollBtn');
 let rerollRequested = false; // true, если победителя вернули в список через кнопку "Реролл"
+let closeWithoutCooldown = false; // true, если окно закрыли крестиком в шапке (без начисления кулдауна)
 
 // Палитра секторов рулетки (чередуется по кругу)
 const WHEEL_COLORS = ['#9146FF', '#5A2FA8', '#bf94ff', '#3d2a63', '#7c3aed', '#2a1f42'];
@@ -897,26 +898,38 @@ function stopWinnerWatch(elapsedSeconds) {
   log(`${winnerWatch.displayName} ответил(а) в чате через ${elapsedSeconds.toFixed(1)} сек после розыгрыша.`, 'success');
 }
 
-// Если стример закрывает окно раньше, чем победитель написал — просто
-// останавливаем таймер. Если это был реролл — победитель уже возвращён
-// в список участников и кулдаун ему НЕ начисляется; иначе (обычное закрытие)
-// запись в истории остаётся, и кулдаун действует как обычно.
+// Если стример закрывает окно раньше, чем победитель написал — есть три варианта:
+// 1) Реролл — победитель остаётся в списке, кулдаун НЕ начисляется, крутим заново.
+// 2) Крестик в шапке — просто закрываем, кулдаун НЕ начисляется, повторного розыгрыша нет.
+// 3) Кнопка "Закрыть (победителю КД)" — запись в истории остаётся, кулдаун действует как обычно.
 winnerChatModalEl.addEventListener('hidden.bs.modal', () => {
   if (winnerWatch && !winnerWatch.answered) {
     clearInterval(winnerWatch.intervalId);
     if (rerollRequested) {
       log(`Реролл подтверждён: ${winnerWatch.displayName} снова в игре, кулдаун не начислен.`, 'warn');
+    } else if (closeWithoutCooldown) {
+      removeHistoryEntry(winnerWatch.historyTimestamp);
+      renderParticipants();
+      drawWheel();
+      log(`Окно закрыто крестиком: кулдаун для ${winnerWatch.displayName} не начислен.`, 'info');
     } else {
       log(`Окно ожидания ответа от ${winnerWatch.displayName} закрыто без ответа — начислен кулдаун.`, 'warn');
     }
   }
   winnerWatch = null;
+  closeWithoutCooldown = false;
 
   if (rerollRequested) {
     rerollRequested = false;
     // Небольшая пауза, чтобы модальное окно полностью скрылось перед новым спином.
     setTimeout(() => drawWinner(), 200);
   }
+});
+
+// Крестик в шапке окна: помечаем, что закрытие должно пройти БЕЗ начисления
+// кулдауна победителю (в отличие от кнопки "Закрыть (победителю КД)" внизу).
+document.getElementById('winnerModalXBtn').addEventListener('click', () => {
+  closeWithoutCooldown = true;
 });
 
 // Кнопка "Реролл": отменяем этот розыгрыш (удаляем запись из истории, чтобы
