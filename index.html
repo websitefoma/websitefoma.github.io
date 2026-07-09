@@ -360,54 +360,124 @@
     padding: 2rem 1rem;
   }
 
-  /* ============ РЕЖИМ "COUNTER-STRIKE" ============ */
-  .cs-wrap {
+  /* ============ РЕЖИМ "COUNTER-STRIKE" — полноэкранное модальное окно ============ */
+  .cs-mode-hint{
+    text-align:center;
+    color:#8a7fa8;
+    font-size:.85rem;
+    padding: 1.5rem 1rem;
+    border: 1px dashed var(--border-soft);
+    border-radius: 12px;
     margin-bottom: 1rem;
   }
+
+  .cs-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(6,4,12,0.92);
+    z-index: 1060;
+    display: none; /* переключается на flex через JS */
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .cs-panel{
+    width: 100%;
+    max-width: 920px;
+    max-height: 94vh;
+    overflow-y: auto;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-soft);
+    border-radius: 16px;
+    box-shadow: 0 0 50px rgba(145,70,255,.4);
+    padding: 1.5rem;
+  }
+  .cs-header{
+    text-align: center;
+    margin-bottom: 1.25rem;
+  }
+  .cs-header h3{
+    color: #f5c518;
+    font-weight: 800;
+    margin-bottom: .3rem;
+  }
+  .cs-header .cs-subtitle{
+    color: #a99ec9;
+    font-size: .9rem;
+  }
+
+  .cs-all-participants-row{
+    display:flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    max-height: 140px;
+    overflow-y: auto;
+    padding: .25rem;
+  }
+  .cs-participant-chip{
+    background: var(--panel-bg-2);
+    border: 1px solid var(--border-soft);
+    border-radius: 20px;
+    padding: .35rem 1rem;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #c9c2dc;
+    transition: all .2s ease;
+  }
+  .cs-participant-chip.selected{
+    background: linear-gradient(90deg, var(--twitch-purple-dark), var(--twitch-purple));
+    border-color: var(--twitch-purple);
+    color: #fff;
+    box-shadow: 0 0 14px rgba(145,70,255,.5);
+  }
+
   .cs-content {
     display: flex;
     align-items: stretch;
-    gap: 8px;
+    gap: 14px;
     justify-content: center;
     background: rgba(0,0,0,0.4);
     border-radius: 14px;
-    padding: 10px;
+    padding: 16px;
   }
   .team-column {
     flex: 1;
-    min-width: 100px;
+    min-width: 140px;
     background: rgba(20,15,30,0.7);
     border-radius: 10px;
-    padding: 6px 4px;
+    padding: 10px 8px;
     border: 1px solid var(--border-soft);
   }
   .team-header {
     text-align: center;
     font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     letter-spacing: 1px;
-    padding: 4px 0;
+    padding: 6px 0;
     border-bottom: 1px solid var(--border-soft);
-    margin-bottom: 6px;
+    margin-bottom: 10px;
+    border-radius: 6px 6px 0 0;
   }
-  .team-terrorist .team-header { color: #ff6b6b; }
-  .team-counter .team-header { color: #4ecdc4; }
+  .team-terrorist .team-header { color: #fff; background: linear-gradient(90deg, #b5441f, #d9631f); }
+  .team-counter .team-header { color: #fff; background: linear-gradient(90deg, #1f6fb5, #1f9ad9); }
 
   .player-with-marker {
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
+    gap: 6px;
+    margin-bottom: 8px;
   }
   .player-marker {
-    width: 20px;
-    height: 20px;
+    width: 26px;
+    height: 26px;
     background: #2a1f42;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: #b8a0ff;
     border: 1px solid var(--twitch-purple);
@@ -416,13 +486,15 @@
   .team-player {
     flex: 1;
     background: var(--panel-bg-2);
-    border-radius: 6px;
-    padding: 2px 8px;
-    font-size: 0.82rem;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.9rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    min-height: 28px;
+    min-height: 34px;
+    display:flex;
+    align-items:center;
     border: 1px solid transparent;
     transition: border-color .2s;
   }
@@ -431,8 +503,8 @@
   }
 
   .cs-video-container {
-    flex: 2;
-    min-width: 200px;
+    flex: 2.2;
+    min-width: 280px;
     position: relative;
     border-radius: 10px;
     overflow: hidden;
@@ -444,7 +516,7 @@
   .cs-video {
     width: 100%;
     height: auto;
-    max-height: 220px;
+    max-height: 420px;
     display: block;
     background: #000;
   }
@@ -481,6 +553,13 @@
     opacity: 0.9;
   }
 
+  .cs-footer{
+    display:flex;
+    justify-content:center;
+    gap: .75rem;
+    margin-top: 1.5rem;
+  }
+
   /* Конфетти (анимация) */
   .winner-celebration {
     position: absolute;
@@ -510,21 +589,22 @@
   }
 
   /* Адаптив для маленьких экранов */
-  @media (max-width: 576px) {
+  @media (max-width: 768px) {
+    .cs-panel{ padding: 1rem; }
     .cs-content {
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 8px;
     }
     .team-column {
       flex: 1 1 40%;
-      min-width: 80px;
+      min-width: 120px;
     }
     .cs-video-container {
       flex: 1 1 100%;
       order: -1;
     }
     .cs-video {
-      max-height: 140px;
+      max-height: 220px;
     }
   }
 
@@ -760,47 +840,9 @@
             </div>
           </div>
 
-          <!-- НОВЫЙ блок "Counter-Strike" -->
-          <div class="cs-wrap" id="csWrap" style="display:none;">
-            <div class="cs-content">
-              <!-- Команда TERRORISTS -->
-              <div class="team-column team-terrorist">
-                <div class="team-header">TERRORISTS</div>
-                <div class="player-with-marker"><div class="player-marker">6</div><div class="team-player" id="terroristPlayer1"></div></div>
-                <div class="player-with-marker"><div class="player-marker">7</div><div class="team-player" id="terroristPlayer2"></div></div>
-                <div class="player-with-marker"><div class="player-marker">8</div><div class="team-player" id="terroristPlayer3"></div></div>
-                <div class="player-with-marker"><div class="player-marker">9</div><div class="team-player" id="terroristPlayer4"></div></div>
-                <div class="player-with-marker"><div class="player-marker">0</div><div class="team-player" id="terroristPlayer5"></div></div>
-              </div>
-
-              <!-- Видео + оверлей победителя -->
-              <div class="cs-video-container">
-                <video class="cs-video" id="csVideo" preload="none" crossorigin="anonymous">
-                  <source src="cs1.webm" type="video/webm">
-                  Ваш браузер не поддерживает video.
-                </video>
-                <div class="cs-winner-display-overlay" id="csWinnerDisplay" style="display:none;">
-                  <div class="winner-celebration">
-                    <div class="confetti"></div><div class="confetti"></div><div class="confetti"></div>
-                  </div>
-                  <div class="cs-winner-avatar-overlay"><i class="bi bi-crown-fill"></i></div>
-                  <div class="winner-info-overlay">
-                    <div class="winner-name-overlay" id="csWinnerName">Победитель</div>
-                    <div class="winner-text-overlay">Поздравляем с победой в розыгрыше!</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Команда COUNTER-TERRORISTS -->
-              <div class="team-column team-counter">
-                <div class="team-header">COUNTER-TERRORISTS</div>
-                <div class="player-with-marker"><div class="player-marker">1</div><div class="team-player" id="counterPlayer1"></div></div>
-                <div class="player-with-marker"><div class="player-marker">2</div><div class="team-player" id="counterPlayer2"></div></div>
-                <div class="player-with-marker"><div class="player-marker">3</div><div class="team-player" id="counterPlayer3"></div></div>
-                <div class="player-with-marker"><div class="player-marker">4</div><div class="team-player" id="counterPlayer4"></div></div>
-                <div class="player-with-marker"><div class="player-marker">5</div><div class="team-player" id="counterPlayer5"></div></div>
-              </div>
-            </div>
+          <!-- Режим "Counter-Strike" теперь открывается отдельным большим окном (см. в конце body) -->
+          <div class="cs-mode-hint" id="csWrap" style="display:none;">
+            <i class="bi bi-crosshair"></i> Розыгрыш откроется в отдельном окне по кнопке ниже
           </div>
 
           <div class="winner-reveal mb-3" id="winnerReveal"></div>
@@ -903,6 +945,65 @@
 </div>
 
 <!-- ============================================================ -->
+<!-- Большое модальное окно "Розыгрыш через Counter-Strike" -->
+<!-- ============================================================ -->
+<div class="cs-overlay" id="csOverlay">
+  <div class="cs-panel">
+    <div class="cs-header">
+      <h3>Розыгрыш через Counter-Strike</h3>
+      <div class="cs-subtitle">Из списка ниже выбираются 10 человек, из которых выиграет только 1</div>
+    </div>
+
+    <!-- Все допущенные участники — выбранные 10 подсвечены фиолетовым -->
+    <div class="cs-all-participants-row" id="csAllParticipantsRow"></div>
+
+    <div class="cs-content">
+      <!-- Команда TERRORISTS -->
+      <div class="team-column team-terrorist">
+        <div class="team-header">TERRORISTS</div>
+        <div class="player-with-marker"><div class="player-marker">6</div><div class="team-player" id="terroristPlayer1"></div></div>
+        <div class="player-with-marker"><div class="player-marker">7</div><div class="team-player" id="terroristPlayer2"></div></div>
+        <div class="player-with-marker"><div class="player-marker">8</div><div class="team-player" id="terroristPlayer3"></div></div>
+        <div class="player-with-marker"><div class="player-marker">9</div><div class="team-player" id="terroristPlayer4"></div></div>
+        <div class="player-with-marker"><div class="player-marker">0</div><div class="team-player" id="terroristPlayer5"></div></div>
+      </div>
+
+      <!-- Видео + оверлей победителя -->
+      <div class="cs-video-container">
+        <video class="cs-video" id="csVideo" preload="none" crossorigin="anonymous" playsinline>
+          Ваш браузер не поддерживает video.
+        </video>
+        <div class="cs-winner-display-overlay" id="csWinnerDisplay" style="display:none;">
+          <div class="winner-celebration">
+            <div class="confetti"></div><div class="confetti"></div><div class="confetti"></div>
+          </div>
+          <div class="cs-winner-avatar-overlay"><i class="bi bi-crown-fill"></i></div>
+          <div class="winner-info-overlay">
+            <div class="winner-name-overlay" id="csWinnerName">Победитель</div>
+            <div class="winner-text-overlay">Поздравляем с победой в розыгрыше!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Команда COUNTER-TERRORISTS -->
+      <div class="team-column team-counter">
+        <div class="team-header">COUNTER-TERRORISTS</div>
+        <div class="player-with-marker"><div class="player-marker">1</div><div class="team-player" id="counterPlayer1"></div></div>
+        <div class="player-with-marker"><div class="player-marker">2</div><div class="team-player" id="counterPlayer2"></div></div>
+        <div class="player-with-marker"><div class="player-marker">3</div><div class="team-player" id="counterPlayer3"></div></div>
+        <div class="player-with-marker"><div class="player-marker">4</div><div class="team-player" id="counterPlayer4"></div></div>
+        <div class="player-with-marker"><div class="player-marker">5</div><div class="team-player" id="counterPlayer5"></div></div>
+      </div>
+    </div>
+
+    <div class="cs-footer">
+      <button type="button" class="btn btn-twitch" id="startCsSelectionBtn"><i class="bi bi-play-fill"></i> Начать отбор</button>
+      <button type="button" class="btn btn-outline-secondary" id="closeCsBtn"><i class="bi bi-x-lg"></i> Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
 <!-- ВСТРОЕННЫЙ TMI.JS (взят из вашего исходного файла) -->
 <!-- ============================================================ -->
 <script>
@@ -983,6 +1084,10 @@ const rerollBtn = document.getElementById('rerollBtn');
 
 // ---------- Элементы для режима CS ----------
 const csWrap = document.getElementById('csWrap');
+const csOverlay = document.getElementById('csOverlay');
+const csAllParticipantsRow = document.getElementById('csAllParticipantsRow');
+const startCsSelectionBtn = document.getElementById('startCsSelectionBtn');
+const closeCsBtn = document.getElementById('closeCsBtn');
 const csVideo = document.getElementById('csVideo');
 const csWinnerDisplay = document.getElementById('csWinnerDisplay');
 const csWinnerName = document.getElementById('csWinnerName');
@@ -1003,11 +1108,6 @@ const counterPlayers = [
 
 let rerollRequested = false;
 let closeWithoutCooldown = false;
-
-// Переменные для CS режима
-let csSelectedParticipants = [];
-let csEndedHandler = null;
-let csTimeout = null;
 
 const WHEEL_COLORS = ['#9146FF', '#5A2FA8', '#bf94ff', '#3d2a63', '#7c3aed', '#2a1f42'];
 
@@ -1319,7 +1419,8 @@ function refreshDrawPreview() {
   if (currentMode === 'elimination') {
     renderEliminationPreview();
   } else if (currentMode === 'cs') {
-    renderCsPreview();
+    // Ничего не делаем — состав игроков CS формируется случайно только
+    // при нажатии кнопки розыгрыша, в момент открытия большого окна.
   } else {
     drawWheel();
   }
@@ -1361,24 +1462,6 @@ function renderEliminationPreview() {
   });
 }
 
-function renderCsPreview() {
-  const eligible = getEligibleParticipants();
-  terroristPlayers.forEach(el => el.textContent = '');
-  counterPlayers.forEach(el => el.textContent = '');
-
-  if (eligible.length === 0) {
-    terroristPlayers[0].textContent = 'Нет участников';
-    return;
-  }
-
-  const selected = eligible.slice(0, Math.min(10, eligible.length));
-  for (let i = 0; i < 5 && i < selected.length; i++) {
-    terroristPlayers[i].textContent = selected[i][1].displayName;
-  }
-  for (let i = 0; i < 5 && i + 5 < selected.length; i++) {
-    counterPlayers[i].textContent = selected[i+5][1].displayName;
-  }
-}
 
 function drawWheel() {
   const eligible = getEligibleParticipants();
@@ -1553,86 +1636,178 @@ function drawWinner() {
 }
 
 // =========================================================================
-// РЕЖИМ CS — ОТДЕЛЬНАЯ ФУНКЦИЯ
+// РЕЖИМ CS — БОЛЬШОЕ МОДАЛЬНОЕ ОКНО
 // =========================================================================
 
-function startCsRoulette(eligible) {
-  // Перемешиваем и берём до 10 участников
-  const shuffled = eligible.slice().sort(() => Math.random() - 0.5);
-  const selected = shuffled.slice(0, Math.min(10, shuffled.length));
-  csSelectedParticipants = selected;
+const CS_VIDEO_COUNT = 41; // видео от cs1.webm до cs41.webm
 
-  // Очищаем слоты и заполняем их
+let csSelectedParticipants = []; // 10 участников, показанных на "арене" в этом розыгрыше
+let csPendingWinnerData = null;  // { username, data } — победитель уже выбран честно, ждём конца видео
+let csVideoEndedHandler = null;
+let csTimeout = null;
+
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Отрисовывает ряд ВСЕХ допущенных участников вверху окна — 10 случайно
+ * выбранных для "арены" подсвечиваются фиолетовым, остальные — серые.
+ */
+function renderCsAllParticipantsRow(eligible, selected) {
+  const selectedUsernames = new Set(selected.map(([username]) => username));
+  csAllParticipantsRow.innerHTML = '';
+  eligible.forEach(([username, data]) => {
+    const chip = document.createElement('div');
+    chip.className = 'cs-participant-chip' + (selectedUsernames.has(username) ? ' selected' : '');
+    chip.textContent = data.displayName;
+    csAllParticipantsRow.appendChild(chip);
+  });
+}
+
+/**
+ * Открывает большое окно CS-розыгрыша: честный случайный победитель уже
+ * выбран среди ВСЕХ допущенных участников, ещё 9 случайных участников
+ * подобраны для антуража "арены". Видео выбирается случайно (cs1..cs41)
+ * и запускается только по нажатию "Начать отбор" внутри окна.
+ */
+function startCsRoulette(eligible) {
+  isSpinning = true;
+  drawBtn.disabled = true;
+  clearParticipantsBtn.disabled = true;
+
+  // Честный случайный победитель среди ВСЕХ допущенных участников
+  const winnerIdxInEligible = Math.floor(Math.random() * eligible.length);
+  const winnerEntry = eligible[winnerIdxInEligible];
+
+  // Ещё до 9 случайных участников для арены (без победителя, добавим его отдельно)
+  const others = eligible.filter((_, idx) => idx !== winnerIdxInEligible);
+  shuffleArray(others);
+  const chosenOthers = others.slice(0, Math.min(9, others.length));
+
+  const selected = shuffleArray([...chosenOthers, winnerEntry]); // случайная позиция победителя среди слотов
+
+  csSelectedParticipants = selected;
+  csPendingWinnerData = { username: winnerEntry[0], data: winnerEntry[1] };
+
+  renderCsAllParticipantsRow(eligible, selected);
+
   terroristPlayers.forEach(el => el.textContent = '');
   counterPlayers.forEach(el => el.textContent = '');
   for (let i = 0; i < 5 && i < selected.length; i++) {
     terroristPlayers[i].textContent = selected[i][1].displayName;
   }
   for (let i = 0; i < 5 && i + 5 < selected.length; i++) {
-    counterPlayers[i].textContent = selected[i+5][1].displayName;
+    counterPlayers[i].textContent = selected[i + 5][1].displayName;
   }
 
-  // Скрываем старый оверлей
   csWinnerDisplay.style.display = 'none';
+  startCsSelectionBtn.disabled = false;
+  startCsSelectionBtn.style.display = 'inline-block';
 
-  // Блокируем кнопки
-  isSpinning = true;
-  drawBtn.disabled = true;
-  clearParticipantsBtn.disabled = true;
+  const videoNumber = Math.floor(Math.random() * CS_VIDEO_COUNT) + 1;
+  csVideo.src = `cs${videoNumber}.webm`;
+  csVideo.load();
+  log(`CS-режим: выбрано видео cs${videoNumber}.webm, на арене ${selected.length} игроков.`, 'info');
 
-  // Запускаем видео
+  csOverlay.style.display = 'flex';
+}
+
+/**
+ * Запускается кнопкой "Начать отбор" внутри окна — воспроизводит видео,
+ * по его завершении (или по таймауту, если видео недоступно) объявляет
+ * заранее честно определённого победителя.
+ */
+function runCsSelectionVideo() {
+  if (!csPendingWinnerData) return;
+  startCsSelectionBtn.disabled = true;
+
   csVideo.currentTime = 0;
-  csVideo.play().catch(e => log('Ошибка воспроизведения видео: ' + e, 'error'));
+  const playPromise = csVideo.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(err => {
+      log('Не удалось запустить видео cs*.webm (возможно, файл ещё не загружен на сайт): ' + err, 'warn');
+      finishCsRoulette();
+    });
+  }
 
-  // Обработчик окончания видео
-  const onEnded = () => {
-    csVideo.removeEventListener('ended', onEnded);
-    clearTimeout(csTimeout);
+  csVideoEndedHandler = () => finishCsRoulette();
+  csVideo.addEventListener('ended', csVideoEndedHandler, { once: true });
 
-    if (csSelectedParticipants.length === 0) {
-      log('Нет участников для выбора победителя в КС', 'error');
-      isSpinning = false;
-      drawBtn.disabled = false;
-      clearParticipantsBtn.disabled = false;
-      return;
+  // Защита от "зависшего" или отсутствующего видео — принудительно завершаем через 20 сек
+  clearTimeout(csTimeout);
+  csTimeout = setTimeout(() => {
+    if (csPendingWinnerData) {
+      log('Видео не завершилось за отведённое время — завершаю розыгрыш принудительно.', 'warn');
+      finishCsRoulette();
     }
+  }, 20000);
+}
 
-    const winnerIndex = Math.floor(Math.random() * csSelectedParticipants.length);
-    const [winnerUsername, winnerData] = csSelectedParticipants[winnerIndex];
+/**
+ * Объявляет победителя (уже выбранного честно заранее), записывает в историю,
+ * открывает окно с чатом/секундомером — так же, как после рулетки/выбывания.
+ */
+function finishCsRoulette() {
+  if (!csPendingWinnerData) return;
 
-    // Показываем оверлей с победителем
-    csWinnerName.textContent = winnerData.displayName;
-    csWinnerDisplay.style.display = 'block';
+  clearTimeout(csTimeout);
+  if (csVideoEndedHandler) {
+    csVideo.removeEventListener('ended', csVideoEndedHandler);
+    csVideoEndedHandler = null;
+  }
 
-    // Добавляем в историю и логируем
-    const historyTimestamp = addWinnerToHistory(winnerUsername, winnerData.displayName, currentKeyword, currentChannel || 'неизвестно');
-    log(`Победитель КС: ${winnerData.displayName}`, 'success');
+  const { username: winnerUsername, data: winnerData } = csPendingWinnerData;
+  csPendingWinnerData = null;
 
-    // Обновляем интерфейс
-    renderParticipants();
-    renderHistory();
-    refreshDrawPreview();
+  csWinnerName.textContent = winnerData.displayName;
+  csWinnerDisplay.style.display = 'flex';
 
-    // Открываем модальное окно с секундомером
+  const historyTimestamp = addWinnerToHistory(winnerUsername, winnerData.displayName, currentKeyword, currentChannel || 'неизвестно');
+  log(`Победитель CS-розыгрыша: ${winnerData.displayName}`, 'success');
+
+  winnerReveal.innerHTML = `🎉 Победитель: <strong>${escapeHtml(winnerData.displayName)}</strong> 🎉`;
+  winnerReveal.classList.add('show');
+
+  renderParticipants();
+  renderHistory();
+
+  isSpinning = false;
+  drawBtn.disabled = false;
+  clearParticipantsBtn.disabled = false;
+
+  // Даём пару секунд полюбоваться экраном победы внутри окна, затем закрываем
+  // арену и открываем уже знакомое окно с чатом и секундомером.
+  setTimeout(() => {
+    csOverlay.style.display = 'none';
     openWinnerWatch(winnerUsername, winnerData.displayName, historyTimestamp);
+  }, 3000);
+}
 
-    // Разблокируем кнопки
+startCsSelectionBtn.addEventListener('click', runCsSelectionVideo);
+
+closeCsBtn.addEventListener('click', () => {
+  csOverlay.style.display = 'none';
+  csVideo.pause();
+  clearTimeout(csTimeout);
+  if (csVideoEndedHandler) {
+    csVideo.removeEventListener('ended', csVideoEndedHandler);
+    csVideoEndedHandler = null;
+  }
+
+  if (csPendingWinnerData) {
+    // Розыгрыш ещё не завершён (видео не доиграло) — отменяем без победителя
+    csPendingWinnerData = null;
     isSpinning = false;
     drawBtn.disabled = false;
     clearParticipantsBtn.disabled = false;
-  };
-
-  csVideo.addEventListener('ended', onEnded);
-
-  // Защита от «зависшего» видео — принудительный выбор через 10 сек
-  csTimeout = setTimeout(() => {
-    if (csVideo.readyState < 3) {
-      csVideo.removeEventListener('ended', onEnded);
-      log('Видео не загрузилось, принудительный выбор победителя', 'warn');
-      onEnded();
-    }
-  }, 10000);
-}
+    log('CS-розыгрыш закрыт вручную без выбора победителя.', 'info');
+  }
+});
 
 // =========================================================================
 // ОКНО ПОБЕДИТЕЛЯ (секундомер)
